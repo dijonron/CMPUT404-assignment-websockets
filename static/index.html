@@ -4,7 +4,7 @@
 <head>
   <title>Websockets Assignment</title>
   <meta charset="utf-8" />
-  <meta content='width=device-width; height=device-height; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;'
+  <meta content='width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=0'
     name='viewport' />
   <meta name="viewport" content="width=device-width" />
   <meta name="license" content="
@@ -23,11 +23,12 @@
   <canvas id="c" width="100%" height="100%"
     style="-webkit-tap-highlight-color: transparent; background-color: transparent;"></canvas>
   <div style="display:none;">
-    <img id="source" src="ss.jpeg">
+    <img id="source" src="ss.jpeg" width="300" height="227">
   </div>
   <div>
     Image: NASA, JPL
-    <a href="https://www.jpl.nasa.gov/edu/learn/video/solar-system-size-and-distance/">(source)</a>
+    <a href="https://www.jpl.nasa.gov/edu/learn/video/solar-system-size-and-distance/
+  ">(source)</a>
   </div>
 
   <script>
@@ -87,8 +88,9 @@
 
     function clearFrame() {
       with (context) {
+        context.drawImage(image, 0, 0, W, H);
         moveTo(0, 0);
-        fillStyle = "#000";
+        fillStyle = "rgba(0, 0, 0, 0)";
         fillRect(0, 0, W, H);
       }
 
@@ -282,6 +284,7 @@
           for (key of Object.keys(message)) {
             world[key] = message[key]
             drawNextFrame();
+            drawFrame();
           }
         } catch (e) {
           alert("socket on message: " + e);
