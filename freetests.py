@@ -40,9 +40,8 @@ import json
 
 world = dict()
 # set this to something sane 
-# calls = 3000
+calls = 3000
 # ugh there's too much output? Well drop calls down
-calls = 100
 
 def utf8(utf8bytes):
     return utf8bytes.decode("utf-8")
@@ -93,8 +92,8 @@ class WorldClient(WebSocketClient):
         
 if __name__ == '__main__':
     try:
-        os.system("kill -9 $(lsof -t -i:8000)");
-        os.system("bash run.sh &");
+        os.system("kill -9 $(lsof -t -i:8000)")
+        os.system("bash run.sh &")
         print("Sleeping 3 seconds")
         gevent.sleep(3)
         ws = WorldClient('ws://127.0.0.1:8000/subscribe', protocols=['http-only', 'chat'])

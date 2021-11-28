@@ -13,31 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import flask
-from flask import Flask, request, redirect
+from flask import Flask, redirect
 from flask_sockets import Sockets
 import gevent
 from gevent import queue
-import time
 import json
 import os
 
 app = Flask(__name__)
 sockets = Sockets(app)
 app.debug = True
-
-
-clients = list()
-
-class Client:
-    def __init__(self):
-        self.queue = queue.Queue()
-
-    def put(self, v):
-        self.queue.put_nowait(v)
-
-    def get(self):
-        return self.queue.get()
 
 class World:
     def __init__(self):
@@ -49,9 +34,9 @@ class World:
         self.listeners.append( listener )
 
     def update(self, entity, key, value):
-        entry = self.space.get(entity,dict())
+        entry = self.space.get(entity, dict())
         entry[key] = value
-        self.space[entity] = entry
+        self.space[entity] = value
         self.update_listeners( entity )
 
     def set(self, entity, data):
@@ -72,36 +57,40 @@ class World:
     def world(self):
         return self.space
 
-myWorld = World()        
+myWorld = World()
+clients = list()
+
+class Client:
+    def __init__(self):
+        self.queue = queue.Queue()
+
+    def put(self, v):
+        self.queue.put_nowait(v)
+
+    def get(self):
+        return self.queue.get()
 
 def set_listener(entity, data):
     ''' do something with the update ! '''
+    msg = json.dumps({entity: data})
+    for client in clients:
+        client.put(msg)
 
 myWorld.add_set_listener( set_listener )
-        
+
 def read_ws(ws,client):
     '''A greenlet function that reads from the websocket and updates the world'''
     try:
         while True:
-            data = ws.receive()
-            print(data)
-            if (data is not None):
-                entity = json.loads(data)
+            msg = ws.receive()
+            if (msg is not None):
+                data = json.loads(msg)
+                for entity in data.keys():
+                    myWorld.update(entity, entity, data[entity])
             else:
                 break
     except:
         """Done"""
-
-
-def flask_post_json():
-    '''Ah the joys of frameworks! They do so much work for you
-       that they get in the way of sane operation!'''
-    if (request.json != None):
-        return request.json
-    elif (request.data != None and request.data.decode("utf8") != u''):
-        return json.loads(request.data.decode("utf8"))
-    else:
-        return json.loads(request.form.keys()[0])
 
 @app.route('/')
 def hello():
@@ -115,7 +104,6 @@ def subscribe_socket(ws):
     client = Client()
     clients.append(client)
     g = gevent.spawn( read_ws, ws, client )    
-    print("Subscribing")
     try:
         while True:
             msg = client.get()
@@ -126,35 +114,10 @@ def subscribe_socket(ws):
         clients.remove(client)
         gevent.kill(g)
 
-@app.route("/entity/<entity>", methods=['POST','PUT'])
-def update(entity):
-    '''update the entities via this interface'''
-    data = flask_post_json()
-    for key in data:
-        myWorld.update(entity, key, data[key])
-    return flask_post_json(), 200
-
-@app.route("/world", methods=['POST','GET'])    
-def world():
-    '''you should probably return the world here'''
-    return myWorld.world(), 200
-
-@app.route("/entity/<entity>")    
-def get_entity(entity):
-    '''This is the GET version of the entity interface, return a representation of the entity'''
-    return myWorld.get(entity), 200
-
-
-@app.route("/clear", methods=['POST','GET'])
-def clear():
-    '''Clear the world out!'''
-    myWorld.clear()
-    return myWorld.world(), 200
-
 if __name__ == "__main__":
     ''' This doesn't work well anymore:
         pip install gunicorn
         and run
         gunicorn -k flask_sockets.worker sockets:app
     '''
-    app.run()
+    os.system("gunicorn -k flask_sockets.worker sockets:app")
